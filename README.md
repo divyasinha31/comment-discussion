@@ -1,4 +1,4 @@
-# 8-tile-puzzle
+# Comment Discussion
 Assignment for LightMetrics
 
 ## Plan
