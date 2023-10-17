@@ -1,10 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormGroup, FormControl, FormBuilder, Validators } from '@angular/forms';
-import { iComment, iReply } from './app-model';
+import { iComment, iReply, iCallAPIReq, iCallAPIResp } from './model';
 import { CommentService } from './comment.service';
-import { EDIT_BY, HEADING, REPLY_TO } from './constants';
-import { iCallAPIReq, iCallAPIResp, iGetCommentsResp } from './api-model';
-import { Observable } from 'rxjs';
+import { EDIT_BY, HEADING, POST_COMMENT, POST_REPLY, REPLY_TO, UPDATE_COMMENT } from './constants';
 
 @Component({
   selector: 'app-root',
@@ -15,10 +13,10 @@ export class AppComponent implements OnInit {
   commentForm: FormGroup;
   comments: iComment[];
   heading: string;
+  buttonText: string;
 
   private currentReplyIndex: number | undefined;
   private currentEditIndex: number | undefined;
-  private subscription: Observable<iCallAPIResp>;
 
   constructor(private formBuilder: FormBuilder,
               private commentService: CommentService) {
@@ -28,6 +26,7 @@ export class AppComponent implements OnInit {
     });
 
     this.heading = HEADING;
+    this.buttonText = POST_COMMENT;
   }
 
   // Angular lifecycle hooks
@@ -36,13 +35,17 @@ export class AppComponent implements OnInit {
   }
 
   // Private methods
-  private async getComments() {
+  private getComments() {
     this.commentService.getComments().subscribe((data : iCallAPIResp) => {
       this.comments = data.record.comments;
     });
   }
 
-  private async addNewComment() {
+  private resetViewReplies() {
+    this.comments.forEach(comment => comment.showReply = false);
+  }
+
+  private addNewComment() {
     const comment: iComment = {
       name: this.commentForm.controls['name'].value,
       comment: this.commentForm.controls['comment'].value,
@@ -51,6 +54,7 @@ export class AppComponent implements OnInit {
       replies: []
     };
     this.comments.push(comment);
+    this.resetViewReplies();
 
     const params: iCallAPIReq = {
       comments : this.comments
@@ -58,10 +62,13 @@ export class AppComponent implements OnInit {
 
     this.commentService.updateComment(params).subscribe((data : iCallAPIResp) => {
       this.comments = data.record.comments;
+      this.resetValues();
+    }, (error) => {
+      this.comments.pop();
     });
   }
 
-  private async updateComment() {
+  private updateComment() {
     const comment: iComment = {
       name: this.commentForm.controls['name'].value,
       comment: this.commentForm.controls['comment'].value,
@@ -70,6 +77,7 @@ export class AppComponent implements OnInit {
       replies: this.comments[this.currentEditIndex as number].replies
     }
     this.comments[this.currentEditIndex as number] = comment;
+    this.resetViewReplies();
 
     const params: iCallAPIReq = {
       comments : this.comments
@@ -77,17 +85,17 @@ export class AppComponent implements OnInit {
 
     this.commentService.updateComment(params).subscribe((data : iCallAPIResp) => {
       this.comments = data.record.comments;
+      this.resetValues();
     });
-
-    this.currentEditIndex = undefined;
   }
 
-  private async addReply() {
+  private addReply() {
     const reply: iReply  = {
       name: this.commentForm.controls['name'].value,
       reply: this.commentForm.controls['comment'].value
     }
     this.comments[this.currentReplyIndex as number].replies?.push(reply);
+    this.resetViewReplies();
 
     const params: iCallAPIReq = {
       comments : this.comments
@@ -95,24 +103,32 @@ export class AppComponent implements OnInit {
 
     this.commentService.updateComment(params).subscribe((data : iCallAPIResp) => {
       this.comments = data.record.comments;
+      this.resetValues();
+    }, (error) => {
+      this.comments[this.currentReplyIndex as number].replies?.pop();
     });
-
-    this.currentReplyIndex = undefined;
   }
 
-  private clearForm() {
+  private resetValues() {
     this.commentForm.reset();
     this.heading = HEADING;
+    this.buttonText = POST_COMMENT;
+
+    this.currentReplyIndex = undefined;
+    this.currentEditIndex = undefined;
   }
 
   // HTML functions
   openReply(index: number) {
+    this.resetValues();
     this.heading = REPLY_TO.concat(this.comments[index].name);
+    this.buttonText = POST_REPLY;
     this.currentReplyIndex = index;
   }
 
   editComment(index: number, comment: iComment) {
     this.heading = EDIT_BY.concat(this.comments[index].name);
+    this.buttonText = UPDATE_COMMENT;
     this.currentEditIndex = index;
 
     this.commentForm.controls['name'].setValue(comment.name);
@@ -120,14 +136,10 @@ export class AppComponent implements OnInit {
   }
 
   post() {
-    if (this.currentReplyIndex !== undefined) {
-      this.addReply();
-    } else if (this.currentEditIndex !== undefined) {
-      this.updateComment();
-    } else {
-      this.addNewComment();
-    }
-
-    this.clearForm();
+    this.currentReplyIndex
+    ? this.addReply() 
+    : this.currentEditIndex
+    ? this.updateComment()
+    : this.addNewComment();
   }
 }

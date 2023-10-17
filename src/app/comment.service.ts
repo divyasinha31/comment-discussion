@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { iCallAPIReq, iCallAPIResp, iGetCommentsResp } from './api-model';
-import { API_URL, GET_BINS_ROUTE, MASTER_KEY, REQUEST_TYPE } from './constants';
+import { iCallAPIReq, iCallAPIResp } from './model';
+import { API_URL, GET_BINS_ROUTE, MASTER_KEY } from './constants';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -8,26 +8,21 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class CommentService {
+  private headers: HttpHeaders
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {
+    this.headers = new HttpHeaders();
+    this.headers = this.headers.append("Content-Type", "application/json");
+    this.headers = this.headers.append("X-Master-Key", MASTER_KEY);
+  }
 
   getComments(): Observable<iCallAPIResp> {
     const url: string = API_URL.concat(GET_BINS_ROUTE);
-
-    let reqHeaders: HttpHeaders = new HttpHeaders()
-    reqHeaders = reqHeaders.append("Content-Type", "application/json");
-    reqHeaders = reqHeaders.append("X-Master-Key", MASTER_KEY);
-
-    return this.http.get(url, {headers: reqHeaders}) as Observable<iCallAPIResp>;
+    return this.http.get<iCallAPIResp>(url, {headers: this.headers});
   }
 
   updateComment(payload: iCallAPIReq): Observable<iCallAPIResp> {
     const url: string = API_URL.concat(GET_BINS_ROUTE);
-
-    let reqHeaders: HttpHeaders = new HttpHeaders()
-    reqHeaders = reqHeaders.append("Content-Type", "application/json");
-    reqHeaders = reqHeaders.append("X-Master-Key", MASTER_KEY);
-
-    return this.http.put(url, payload, {headers: reqHeaders}) as Observable<iCallAPIResp>;
+    return this.http.put<iCallAPIResp>(url, payload, {headers: this.headers});
   }
 }
